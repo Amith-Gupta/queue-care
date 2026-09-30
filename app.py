@@ -438,10 +438,11 @@ def seed_demo_data():
 
 
 if __name__ == "__main__":
-    # Run simple Flask server on port 5000 with debug mode enabled
+    port = int(os.environ.get("PORT", 5000))
     print("=" * 60)
     print(" QueueCare - Smart Hospital Token System is running!")
-    print(" Patient Portal: http://127.0.0.1:5000")
-    print(" Admin Portal:   http://127.0.0.1:5000/admin")
+    print(f" Local URL: http://127.0.0.1:{port}")
+    print(f" Admin URL: http://127.0.0.1:{port}/admin")
     print("=" * 60)
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=port)
+
