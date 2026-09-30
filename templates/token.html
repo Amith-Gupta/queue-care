@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token {{ token.token_number }} – QueueCare</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="{{ url_for('index') }}" class="logo">
+        <div class="logo-icon">🏥</div>
+        <div class="logo-text">
+          <h1>Queue<span>Care</span></h1>
+          <div class="logo-subtitle">Live Token Tracker</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="{{ url_for('index') }}" class="nav-link"><span>➕</span> New Token</a>
+        <a href="{{ url_for('admin') }}" class="nav-link admin-btn"><span>🛡️</span> Admin</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container token-wrapper">
+
+      <!-- Prominent Digital Token Display (LED / Medical Display Card) -->
+      <div class="digital-token-display">
+        <div class="token-badge-dept">
+          <span>{{ dept_info.icon }}</span>
+          <span>{{ token.department }}</span>
+        </div>
+
+        <div class="token-headline">Your Digital OPD Token</div>
+        <div class="digital-token-number">{{ token.token_number }}</div>
+
+        <div class="token-patient-meta">
+          <strong>{{ token.patient_name }}</strong> &bull; +91 {{ token.phone }}
+        </div>
+
+        <!-- Live Status Banner -->
+        <div>
+          {% if token.status == 'Waiting' %}
+            <div id="live-status-badge" class="token-status-banner status-waiting">
+              <span>⏳</span> Queue Status: Waiting in Queue
+            </div>
+          {% elif token.status == 'Serving' %}
+            <div id="live-status-badge" class="token-status-banner status-serving">
+              <span>🔔</span> You are Being Served Now! Please Enter Room
+            </div>
+          {% else %}
+            <div id="live-status-badge" class="token-status-banner status-completed">
+              <span>✅</span> Queue Status: Consultation Completed
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Live Sync Indicator -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div class="live-sync-indicator">
+          <span class="dot-pulse"></span>
+          <span>Live Sync Enabled: Auto-updating queue position every few seconds</span>
+        </div>
+      </div>
+
+      <!-- Core Metrics Grid: Currently Serving & People Ahead -->
+      <div class="token-stats-grid">
+        <!-- Currently Serving -->
+        <div class="token-stat-card">
+          <div class="token-stat-icon">🩺</div>
+          <div class="token-stat-label">Currently Serving</div>
+          <div class="token-stat-value highlight" id="live-currently-serving">
+            {{ currently_serving }}
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            In {{ token.department }}
+          </div>
+        </div>
+
+        <!-- People Ahead -->
+        <div class="token-stat-card">
+          <div class="token-stat-icon">👥</div>
+          <div class="token-stat-label">People Ahead</div>
+          <div class="token-stat-value" id="live-people-ahead">
+            {{ people_ahead }}
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            Estimated wait: ~{{ people_ahead * 6 }} mins
+          </div>
+        </div>
+      </div>
+
+      <!-- Consultation Progress Timeline -->
+      <div class="queue-progress">
+        <h3>Queue Progress</h3>
+        <div class="progress-track">
+          <!-- Step 1: Registered -->
+          <div class="progress-step done" id="step-registered">
+            <div class="step-circle">✓</div>
+            <div class="step-label">Registered</div>
+          </div>
+
+          <!-- Step 2: Waiting -->
+          <div class="progress-step {% if token.status == 'Waiting' %}active{% elif token.status in ['Serving', 'Completed'] %}done{% endif %}" id="step-waiting">
+            <div class="step-circle">2</div>
+            <div class="step-label">In Waiting Queue</div>
+          </div>
+
+          <!-- Step 3: Serving -->
+          <div class="progress-step {% if token.status == 'Serving' %}active{% elif token.status == 'Completed' %}done{% endif %}" id="step-serving">
+            <div class="step-circle">3</div>
+            <div class="step-label">With Doctor</div>
+          </div>
+
+          <!-- Step 4: Completed -->
+          <div class="progress-step {% if token.status == 'Completed' %}done{% endif %}" id="step-completed">
+            <div class="step-circle">4</div>
+            <div class="step-label">Completed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details Summary Card -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📋</span> Token Information
+          </div>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">
+            Booked: {{ token.created_at }}
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 0.92rem;">
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 0.8rem;">Patient Name:</span>
+            <strong>{{ token.patient_name }}</strong>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 0.8rem;">Contact Number:</span>
+            <strong>+91 {{ token.phone }}</strong>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 0.8rem;">Hospital Department:</span>
+            <strong>{{ dept_info.icon }} {{ token.department }}</strong>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 0.8rem;">Symptoms Noted:</span>
+            <strong>{{ token.symptoms if token.symptoms else 'None specified' }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="token-actions">
+        <button type="button" class="btn-secondary" onclick="window.print();">
+          <span>🖨️</span> Print / Save Token
+        </button>
+        <a href="{{ url_for('index') }}" class="btn-secondary">
+          <span>➕</span> Book Another Token
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      QueueCare – Keep this window open. Your screen will automatically update when your token is called.
+    </div>
+  </footer>
+
+  <!-- Pass Token Number to JS for auto polling -->
+  <script>
+    window.TRACK_TOKEN_NUMBER = "{{ token.token_number }}";
+    window.CURRENT_STATUS = "{{ token.status }}";
+  </script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

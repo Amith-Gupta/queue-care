@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QueueCare – Smart Hospital Token System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="{{ url_for('index') }}" class="logo">
+        <div class="logo-icon">🏥</div>
+        <div class="logo-text">
+          <h1>Queue<span>Care</span></h1>
+          <div class="logo-subtitle">Smart Hospital Token System</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="{{ url_for('index') }}" class="nav-link"><span>🏠</span> Home</a>
+        <a href="{{ url_for('admin') }}" class="nav-link admin-btn"><span>🛡️</span> Admin Portal</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  <div class="container flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <span>ℹ️</span> {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <main class="main-content">
+    <div class="container">
+
+      <!-- Hero Header -->
+      <section class="hero-banner">
+        <h2>Instant Outpatient Token Generation</h2>
+        <p>Skip crowded waiting rooms. Register symptoms, receive your digital queue token, and track live consultation status in real time.</p>
+      </section>
+
+      <!-- Main Two-Column Layout -->
+      <div class="grid-2">
+
+        <!-- Column 1: AI Recommendation + Token Form -->
+        <div>
+          <!-- Simple AI Department Recommendation -->
+          <div class="card ai-card">
+            <div class="ai-header">
+              <span class="ai-pill">✨ Smart Assistant</span>
+              <strong style="color: var(--primary-hover); font-size: 0.95rem;">AI Department Recommendation</strong>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 8px;">
+              Not sure which doctor to consult? Enter your symptoms (e.g. <em>"I have severe knee pain"</em> or <em>"fever and cough"</em>) to get an automated recommendation.
+            </p>
+            <div class="ai-input-group">
+              <input type="text" id="ai-symptoms-input" class="ai-input" placeholder="Type your symptoms here..." autocomplete="off">
+              <button type="button" id="btn-ai-analyze" class="btn-ai">
+                <span>✨ Recommend</span>
+              </button>
+            </div>
+
+            <!-- Dynamic AI Result Box -->
+            <div id="ai-result-box" class="ai-result-box">
+              <div class="ai-result-header">
+                <span>Recommended Department:</span>
+                <span id="ai-result-dept" style="font-size: 1.05rem;"></span>
+              </div>
+              <p id="ai-result-reason" class="ai-result-body"></p>
+              <button type="button" id="btn-apply-recommendation" class="btn-apply-rec">
+                ✓ Select This Department
+              </button>
+            </div>
+          </div>
+
+          <!-- Token Registration Form -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>🎫</span> Get Your OPD Token
+              </div>
+              <span class="card-badge">Instant Booking</span>
+            </div>
+
+            <form action="{{ url_for('get_token') }}" method="POST" id="token-form">
+              <!-- Hidden field to carry AI symptoms if provided -->
+              <input type="hidden" name="symptoms" id="hidden-symptoms" value="">
+
+              <!-- Patient Name -->
+              <div class="form-group">
+                <label for="patient_name" class="form-label">
+                  Patient Full Name <span class="req">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="patient_name" 
+                  name="patient_name" 
+                  class="form-control" 
+                  placeholder="e.g. Alex Johnson" 
+                  required
+                  autocomplete="name"
+                >
+              </div>
+
+              <!-- Phone Number -->
+              <div class="form-group">
+                <label for="phone" class="form-label">
+                  10-Digit Mobile Number <span class="req">*</span>
+                </label>
+                <input 
+                  type="tel" 
+                  id="phone" 
+                  name="phone" 
+                  class="form-control" 
+                  placeholder="e.g. 9876543210" 
+                  pattern="[0-9]{10}" 
+                  maxlength="10" 
+                  required
+                  autocomplete="tel"
+                >
+                <div class="form-helper">Enter 10 digits without spaces or country code</div>
+              </div>
+
+              <!-- Department Selection -->
+              <div class="form-group">
+                <label class="form-label">
+                  Select Department <span class="req">*</span>
+                </label>
+                <div class="dept-grid">
+                  {% for dept_name, info in departments.items() %}
+                    <label class="dept-radio-label">
+                      <input 
+                        type="radio" 
+                        name="department" 
+                        value="{{ dept_name }}" 
+                        {% if loop.first %}checked{% endif %}
+                      >
+                      <div class="dept-card-opt">
+                        <div class="dept-card-icon">{{ info.icon }}</div>
+                        <div class="dept-card-info">
+                          <h4>{{ dept_name }}</h4>
+                          <p>Series {{ info.prefix }}-000</p>
+                        </div>
+                      </div>
+                    </label>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" class="btn-primary" id="btn-get-token">
+                <span>🎟️</span> Get Token Now
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Column 2: Live Department Queues & Quick Lookup -->
+        <div>
+          <!-- Live Department Overview -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <div class="card-title">
+                <span>📊</span> Live OPD Queue Status
+              </div>
+              <div class="live-sync-indicator" style="margin-top: 0;">
+                <span class="dot-pulse"></span>
+                <span>Active</span>
+              </div>
+            </div>
+
+            <div class="live-dept-list">
+              {% for dept_name, stat in dept_stats.items() %}
+                <div class="live-dept-item">
+                  <div class="live-dept-title">
+                    <span class="icon">{{ stat.icon }}</span>
+                    <div>
+                      <h4>{{ dept_name }}</h4>
+                      <span>{{ stat.desc }}</span>
+                    </div>
+                  </div>
+                  <div class="live-dept-numbers">
+                    <div class="stat-chip">
+                      <span class="label">Serving</span>
+                      <span class="val active-token">{{ stat.serving }}</span>
+                    </div>
+                    <div class="stat-chip">
+                      <span class="label">Waiting</span>
+                      <span class="val">{{ stat.waiting }}</span>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Existing Token Status Quick Lookup -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>🔍</span> Already Have a Token?
+              </div>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">
+              Enter your token number (e.g. <strong>A-001</strong>, <strong>C-002</strong>) to jump directly to your live tracking screen.
+            </p>
+            <div style="display: flex; gap: 10px;">
+              <input 
+                type="text" 
+                id="lookup-token-input" 
+                class="form-control" 
+                placeholder="e.g. A-001" 
+                style="text-transform: uppercase;"
+              >
+              <button 
+                type="button" 
+                class="btn-primary" 
+                style="width: auto; padding: 12px 20px;"
+                onclick="const t = document.getElementById('lookup-token-input').value.trim().toUpperCase(); if(t) window.location.href='/token/' + t; else alert('Enter token number');"
+              >
+                Track
+              </button>
+            </div>
+          </div>
+
+          <!-- Hospital Information Box -->
+          <div class="card" style="margin-top: 24px; background: #f8fafc;">
+            <h4 style="font-size: 0.95rem; margin-bottom: 8px;">ℹ️ OPD Guidelines</h4>
+            <ul style="font-size: 0.86rem; color: var(--text-muted); padding-left: 18px; line-height: 1.6;">
+              <li>Keep your digital token screen open to receive live updates.</li>
+              <li>Please proceed to the doctor's room as soon as your token turns <strong>Serving</strong>.</li>
+              <li>Emergency cases receive priority over normal sequence tokens.</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      QueueCare – Smart Hospital Token System &bull; <span class="tag">Hackathon 2026 Edition</span> &bull; Built with Flask &amp; SQLite
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

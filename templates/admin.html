@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard – QueueCare</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="{{ url_for('index') }}" class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">
+          <h1>Queue<span>Care</span></h1>
+          <div class="logo-subtitle">Staff &amp; Doctor Admin Console</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="{{ url_for('index') }}" class="nav-link"><span>🏠</span> Patient Page</a>
+        <a href="{{ url_for('admin') }}" class="nav-link admin-btn"><span>🔄</span> Refresh</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  <div class="container flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <span>📢</span> {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <main class="main-content">
+    <div class="container">
+
+      <!-- Admin Header Bar -->
+      <div class="admin-header-bar">
+        <div class="admin-title">
+          <h2>OPD Queue Management</h2>
+          <p>Control patient calling, monitor waiting rooms, and track completed visits across hospital departments.</p>
+        </div>
+        <div class="admin-quick-actions">
+          <!-- Hackathon Quick Demo Data Button -->
+          <form action="{{ url_for('seed_demo_data') }}" method="POST" onsubmit="return confirm('Populate sample queue data for hackathon demo?');">
+            <button type="submit" class="btn-secondary" style="font-size: 0.85rem; padding: 10px 14px;">
+              <span>⚡</span> Load Demo Data
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Department Selector Tabs -->
+      <nav class="dept-nav-tabs">
+        {% for d_name, d_info in departments.items() %}
+          <a 
+            href="{{ url_for('admin', department=d_name) }}" 
+            class="dept-tab-item {% if selected_dept == d_name %}active{% endif %}"
+          >
+            <span>{{ d_info.icon }}</span>
+            <span>{{ d_name }}</span>
+            <span class="tab-badge">
+              Wait: {{ summary[d_name]['waiting'] }}
+            </span>
+          </a>
+        {% endfor %}
+      </nav>
+
+      <!-- Department Admin Workspace (Grid) -->
+      <div class="admin-grid">
+
+        <!-- Left Column: Currently Serving + Call Next Patient Action -->
+        <div>
+          <div class="serving-box {% if current_serving %}has-patient{% endif %}">
+            <div class="serving-tag">Currently In Consultation</div>
+            
+            {% if current_serving %}
+              <div class="serving-token-lg">{{ current_serving.token_number }}</div>
+              <div class="serving-name">{{ current_serving.patient_name }}</div>
+              <div class="serving-phone">📞 +91 {{ current_serving.phone }}</div>
+
+              {% if current_serving.symptoms %}
+                <div style="background: white; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 16px; font-size: 0.85rem; text-align: left;">
+                  <strong style="color: var(--text-muted); display: block; font-size: 0.75rem;">SYMPTOMS / NOTES:</strong>
+                  {{ current_serving.symptoms }}
+                </div>
+              {% endif %}
+
+              <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">
+                Called at: {{ current_serving.called_at if current_serving.called_at else 'Just now' }}
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 20px 0;">
+                <div class="empty-state-icon">🛋️</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark);">No Active Patient</div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">The consultation desk is currently free.</p>
+              </div>
+            {% endif %}
+
+            <!-- Call Next Patient Form -->
+            <form action="{{ url_for('call_next_patient') }}" method="POST">
+              <input type="hidden" name="department" value="{{ selected_dept }}">
+              <button 
+                type="submit" 
+                class="btn-call-next"
+                {% if waiting_patients|length == 0 and not current_serving %}disabled style="opacity: 0.6; cursor: not-allowed;"{% endif %}
+              >
+                <span>🔔</span> Call Next Patient
+              </button>
+            </form>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;">
+              Marks previous patient <strong>Completed</strong> and advances queue.
+            </div>
+          </div>
+
+          <!-- Department Queue Stats Summary Card -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+              <div class="card-title" style="font-size: 1.05rem;">
+                <span>📈</span> {{ selected_dept }} Stats
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center;">
+              <div style="background: #f8fafc; padding: 12px; border-radius: var(--radius-md);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Waiting</div>
+                <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-amber);">{{ waiting_patients|length }}</div>
+              </div>
+              <div style="background: #f8fafc; padding: 12px; border-radius: var(--radius-md);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Completed</div>
+                <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-green);">{{ summary[selected_dept]['completed'] }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Waiting Patients Queue & Completed List -->
+        <div>
+          <!-- Waiting Patients List -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <div class="card-title">
+                <span>⏳</span> Waiting Queue ({{ waiting_patients|length }})
+              </div>
+              <span class="card-badge" style="background: var(--accent-amber-light); color: var(--accent-amber);">Next Up</span>
+            </div>
+
+            {% if waiting_patients %}
+              <div class="table-container">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Queue #</th>
+                      <th>Token</th>
+                      <th>Patient Name</th>
+                      <th>Phone</th>
+                      <th>Registered Time</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for patient in waiting_patients %}
+                      <tr>
+                        <td>
+                          <span style="font-weight: 800; color: var(--text-muted);">#{{ loop.index }}</span>
+                        </td>
+                        <td>
+                          <span class="token-pill">{{ patient.token_number }}</span>
+                        </td>
+                        <td>
+                          <strong>{{ patient.patient_name }}</strong>
+                          {% if patient.symptoms %}
+                            <div style="font-size: 0.78rem; color: var(--text-muted);" title="{{ patient.symptoms }}">
+                              🩺 {{ patient.symptoms|truncate(32) }}
+                            </div>
+                          {% endif %}
+                        </td>
+                        <td>{{ patient.phone }}</td>
+                        <td style="font-size: 0.82rem; color: var(--text-muted);">
+                          {{ patient.created_at }}
+                        </td>
+                        <td>
+                          <span class="status-badge waiting">
+                            <span>⏳</span> Waiting
+                          </span>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="empty-state">
+                <div class="empty-state-icon">🎉</div>
+                <div style="font-weight: 700; color: var(--text-dark); font-size: 1.05rem;">No Patients Waiting</div>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
+                  All registered patients in {{ selected_dept }} have been attended to.
+                </p>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Recently Completed Patients List -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>✅</span> Recently Completed Consultations
+              </div>
+            </div>
+
+            {% if completed_patients %}
+              <div class="table-container">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Token</th>
+                      <th>Patient Name</th>
+                      <th>Phone</th>
+                      <th>Completed Time</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for patient in completed_patients %}
+                      <tr>
+                        <td>
+                          <span class="token-pill" style="opacity: 0.8;">{{ patient.token_number }}</span>
+                        </td>
+                        <td>{{ patient.patient_name }}</td>
+                        <td>{{ patient.phone }}</td>
+                        <td style="font-size: 0.82rem; color: var(--text-muted);">
+                          {{ patient.completed_at if patient.completed_at else 'Earlier today' }}
+                        </td>
+                        <td>
+                          <span class="status-badge completed">
+                            <span>✓</span> Completed
+                          </span>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 24px 0;">
+                <p style="font-size: 0.88rem; color: var(--text-muted);">No completed consultations recorded yet today.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      QueueCare Admin Portal &bull; Real-time Multi-Department Hospital Queue Management
+    </div>
+  </footer>
+
+</body>
+</html>
